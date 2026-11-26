@@ -1,75 +1,70 @@
-# x-upt 配套基建与三级门禁落地执行规范（GATE BOOTSTRAP）
+# x-upt 基建落地与三级门禁执行指引（GATE BOOTSTRAP）
 
-> **用途**：本文件是 [IRON_RULES.md](./IRON_RULES.md) 的配套落地施工指引，结合 `x-loadgen` 全栈布局与 `x-upt` 代码基线编写。供开发者或 AI 代理在为 `x-upt` 拆分 Cargo Workspace、接入 Vue 3 内嵌 WebUI 与上线 G1–G3 自动化门禁时按序执行。
-
----
-
-## 0. 落地前必读与现状基线
-
-执行任何改造前，先读取并核对：
-- 行为与仓库基线：[AGENTS.md](./AGENTS.md)、[IRON_RULES.md](./IRON_RULES.md)
-- 现有构建与 CI：[Cargo.toml](./Cargo.toml)、[build.rs](./build.rs)、[clippy.toml](./clippy.toml)、[rust-toolchain.toml](./rust-toolchain.toml)、[Dockerfile](./Dockerfile)、[.github/workflows/ci.yml](./.github/workflows/ci.yml)
-- 现有模拟上游契约与验收：[docs/SPEC.md](./docs/SPEC.md)、[docs/API.md](./docs/API.md)、[proto/upupt.proto](./proto/upupt.proto)、[spec/upupt.wsdl](./spec/upupt.wsdl)、[test/acceptance.py](./test/acceptance.py)、[test/envelope_acceptance.py](./test/envelope_acceptance.py)
-- 参照样板（`x-loadgen`）：Workspace 分层（`x-loadgen-bin/x-loadgen` + `x-loadgen-libs/*`）、`build.rs` + `rust-embed`（`static_files.rs`）、路由守护与安全中间件（`server.rs`）、Vue 3 + pnpm 前端（`web/`）、OpenAPI 路由一致性校验（`openapi.rs`）及自包含 `deploy/` Compose 工程。
-
-**当前 `x-upt` 存量基线（改造起点）**：
-- `x-upt` 为独立项目，当前以单体 Crate 形态存在，`src/` 下共 `57` 个 `.rs` 文件（`0` 处 `unsafe`、`0` 处 `#[allow]`、`76` 处 `.unwrap(`、`2` 处 `.expect(`、`11` 处 `println!`/`eprintln!`，另有 `main.rs` 的 `std::process::exit(1)` 与 `posts_gen.rs` 等处的 `as` 强转，尚无 `lib.rs` / Rustdoc 全覆盖）。
-- 暂无 `web/` 前端目录、管理面 HTTP 服务、`openapi.json` 及 `scripts/*-guard.py` / `scripts/gate/all.sh` 门禁脚本。
+> **用途**：本文件是 [IRON_RULES.md](./IRON_RULES.md) 的配套落地施工说明，供开发者与代理在拆分 `x-upt` Cargo Workspace、完善对外接口文档、嵌入只读在线文档门户及建设 G1–G3 自动化门禁时按序执行。
 
 ---
 
-## 一、五步落地清单
+## 0. 落地前核对清单
 
-### 1. 锁死 Rust Workspace、独立命名与 Clippy 配置
-1. **Workspace 拆分与独立标识**：
-   - 根 `Cargo.toml` 转为 `[workspace]`，按依赖倒置拆分为 `x-upt-libs/x-upt-domain`（纯模型/错误/`trait`，零 HTTP/DB/嵌入依赖）、能力层 Crate（如 `x-upt-core`、`x-upt-crypto`、`x-upt-store`、`x-upt-fronts`）与入口 Crate `x-upt-bin/x-upt`（产出二进制 `x-upt`）。
-   - 统一独立命名与默认端口：环境变量前缀 `X_UPT_*`、数据文件 `x-upt.sqlite`、管理面默认监听 `0.0.0.0:18768`、模拟上游接入面默认监听 `16000`–`16008` 与 `16010`–`16015`（其中 `[fronts.grpc]` 位于 `16005` 且默认启用）。
-2. **工具链与复杂度阈值**：
-   - 保持 [rust-toolchain.toml](./rust-toolchain.toml)（固定 `1.100.0`，显式包含 `clippy`、`rustfmt`）。
-   - 收紧 [clippy.toml](./clippy.toml) 至：`too-many-lines-threshold = 100`、`cognitive-complexity-threshold = 25`、`too-many-arguments-threshold = 7`、`type-complexity-threshold = 250`、`max-fn-params-bools = 3`、`max-struct-bools = 3`、`enum-variant-size-threshold = 200`（`hyper::Response` / `tonic::Status` 等大错误体以 `Box` 包装）。
-3. **Workspace Lints 全 `deny` / `forbid`**：
-   - 在根 `Cargo.toml` 配置 `[workspace.lints.{rust,rustdoc,clippy}]`：`unsafe_code = "forbid"`、`allow_attributes = "deny"`、`missing_docs = "deny"`、`missing_errors_doc = "deny"`、`missing_panics_doc = "deny"`、`rustdoc::all = "deny"`，以及 `unwrap_used`、`expect_used`、`get_unwrap`、`panic`、`todo`、`unimplemented`、`unreachable`、`indexing_slicing`、`as_conversions`、`as_underscore`、`trivial_casts`、`lossy_float_literal`、`let_underscore_must_use`、`unused_result_ok`、`mem_forget`、`dbg_macro`、`print_stdout`、`print_stderr`、`exit`、`rc_buffer`、`rc_mutex`、`infinite_loop`、`significant_drop_in_scrutinee`、`non_send_fields_in_send_ty` 全设 `deny`。
-   - 所有成员 Crate `Cargo.toml` 声明 `[lints] workspace = true`，所有 `src/lib.rs` 顶部加：`#![doc(test(attr(deny(warnings), forbid(unsafe_code))))]`。
+动手修改前，先核对仓内现有基线文件：
+- 工程规范：[AGENTS.md](./AGENTS.md)、[IRON_RULES.md](./IRON_RULES.md)
+- 构建与发版工作流：[Cargo.toml](./Cargo.toml)、[build.rs](./build.rs)、[clippy.toml](./clippy.toml)、[rust-toolchain.toml](./rust-toolchain.toml)、[Dockerfile](./Dockerfile)、[ci.yml](./.github/workflows/ci.yml)、[release.yml](./.github/workflows/release.yml)、[release-test.sh](./.github/scripts/release-test.sh)
+- 模拟上游契约与验收脚本：[docs/SPEC.md](./docs/SPEC.md)、[docs/API.md](./docs/API.md)、[scripts/run.sh](./scripts/run.sh)、[scripts/gen_envelope_keys.sh](./scripts/gen_envelope_keys.sh)、[test/acceptance.py](./test/acceptance.py)、[test/envelope_acceptance.py](./test/envelope_acceptance.py)
 
-### 2. 编写零外部依赖的 G1/G2 静态守卫脚本（Python >= 3.11 标准库）
+---
+
+## 一、五步落地流程
+
+### 1. 统一中立命名、拆分 Cargo Workspace 与锁死 Lints
+1. **Workspace 分层与独立标识**：
+   - 根 [Cargo.toml](./Cargo.toml) 配置为 `[workspace]`，按单向依赖拆分为：
+     - `crates/x-upt-core`：领域模型、配置结构、统一错误类型、协议文档元数据与 `posts` / `photos` / `imgdef` 确定性业务核（零网络与嵌入依赖）；
+     - `crates/x-upt-crypto`：HTTP 鉴权校验原语与信封 `canon` / `crypt` 算法实现；
+     - `crates/x-upt-fronts`：15 个多协议模拟接入面监听与路由适配；
+     - `crates/x-upt`：主二进制 `x-upt`、CLI 入口、内置默认素材释放与只读文档门户服务。
+   - 统一包名、二进制名、默认日志名、协议契约文件与演示凭据为中立的 `x-upt` / `demo_app` 命名，同步适配 [scripts/run.sh](./scripts/run.sh)、`.github/scripts/release.sh` 与 [release-test.sh](./.github/scripts/release-test.sh)。
+   - 默认配置将文档门户监听设为 `0.0.0.0:18768`，模拟上游监听设为 `16000`–`16008` 与 `16010`–`16015`（gRPC 默认启用），所有代码、文档示例与验收脚本一律从配置或环境变量读取地址与端口。
+2. **工具链、复杂度阈值与 Workspace Lints**：
+   - 保持 [rust-toolchain.toml](./rust-toolchain.toml) 固定 `1.100.0`（含 `clippy`、`rustfmt`）。
+   - 收紧 [clippy.toml](./clippy.toml) 至：`too-many-lines-threshold = 100`、`cognitive-complexity-threshold = 25`、`too-many-arguments-threshold = 7`、`type-complexity-threshold = 250`、`max-fn-params-bools = 3`、`max-struct-bools = 3`、`enum-variant-size-threshold = 200`。
+   - 根 [Cargo.toml](./Cargo.toml) 配置 `[workspace.lints.{rust,rustdoc,clippy}]`：开启 `unsafe_code = "forbid"`、`allow_attributes = "deny"`、`missing_docs = "deny"`、`missing_errors_doc = "deny"`、`missing_panics_doc = "deny"`、`rustdoc::all = "deny"`，并将 `unwrap_used`、`expect_used`、`get_unwrap`、`panic`、`todo`、`unimplemented`、`unreachable`、`indexing_slicing`、`as_conversions`、`as_underscore`、`trivial_casts`、`lossy_float_literal`、`let_underscore_must_use`、`unused_result_ok`、`mem_forget`、`dbg_macro`、`print_stdout`、`print_stderr`、`exit`、`rc_buffer`、`rc_mutex`、`infinite_loop`、`significant_drop_in_scrutinee`、`non_send_fields_in_send_ty` 全部设为 `deny`。
+   - 所有成员 Crate 声明 `[lints] workspace = true`，所有库 Crate 的 `src/lib.rs` 顶部声明 `#![doc(test(attr(deny(warnings), forbid(unsafe_code))))]`。
+
+### 2. 落地零外部依赖的静态守卫脚本（Python >= 3.11 标准库）
 1. **`scripts/lint-guard.py`**：
-   - 核验 `rust-toolchain.toml`（含 `clippy`、`rustfmt`）、`Cargo.lock` 已提交、`[workspace.lints]` 与 `[lints] workspace = true` 完整、`clippy.toml` 阈值严谨、仓库内不存在篡改规则的 `.cargo/config*`。
-   - 剥离 Rust 注释与字符串字面量后，全仓拦截 `unsafe`、`#[allow]`/`#![allow]`/`#[expect]`/`#![expect]`/`#[warn]`/`cfg_attr(..., allow|expect|warn)`、`#[doc(hidden)]`、`#[rustfmt::skip]`、`cfg(false)`、`cfg(any())` 与动态 `include!`。
+   - 校验 [rust-toolchain.toml](./rust-toolchain.toml)、[Cargo.lock](./Cargo.lock)、`[workspace.lints]`、`[lints] workspace = true` 与 [clippy.toml](./clippy.toml) 阈值完整有效，确认仓内不存在覆写规则的 `.cargo/config*`。
+   - 剥离注释与字符串后扫描全仓 `.rs` 源码，拦截 `unsafe`、豁免属性与动态 `include!`；扫描源码与文档拦截外部项目耦合词汇与硬编码端口死值。
 2. **`scripts/web-guard.py`**：
-   - 校验 `x-upt-bin/x-upt/web/tsconfig.json` 开启 `"strict": true`、`noUnusedLocals`、`noUnusedParameters`、`noUncheckedIndexedAccess`。
-   - 剥离 TS/Vue 注释与字符串后，全仓拦截 `: any`、`as any`、`<any>`、`@ts-ignore`、`@ts-expect-error`、`@ts-nocheck`、`eslint-disable`；检查基础 UI 原语收口（`src/components/ui/Ui*.vue`）与 `onUnmounted` 资源释放（ECharts / EventSource / WebSocket）。
+   - 校验 `web/tsconfig.json` 开启 `"strict": true`、`noUnusedLocals`、`noUnusedParameters`、`noUncheckedIndexedAccess`。
+   - 扫描 `web/src` 拦截 `: any`、`as any`、`<any>`、`@ts-ignore`、`@ts-expect-error`、`@ts-nocheck`、`eslint-disable`、外部 CDN URL，以及未在 `onUnmounted` 中清理的定时器和流连接。
 3. **`scripts/embed-guard.py`**：
-   - 校验 `x-upt-bin/x-upt/web/dist/index.html` 存在；拦截 `*.map`、`.env*`、`node_modules` 或业务测试图片（`imgs/`）混入 `web/dist`。
-   - 校验单文件与总内嵌体积上限；核验 `x-upt-bin/x-upt/build.rs` 声明 `cargo:rerun-if-changed=web/dist` 且在 release 构建缺失 `web/dist/index.html` 时非零退出。
+   - 校验 `web/dist/index.html` 存在，拦截 `*.map`、`.env*`、`node_modules` 或业务样本图片混入 `web/dist`。
+   - 校验单文件与总内嵌体积预算，核验 `crates/x-upt/build.rs` 声明 `cargo:rerun-if-changed` 且在 release 构建缺失 `web/dist/index.html` 时非零退出。
 4. **`scripts/check_routes.py`**：
-   - 静态提取管理面 `axum` Router 路由，与 `x-upt-bin/x-upt/openapi.json` 双向比对（对照 `x-loadgen` `openapi.rs` 策略），阻断未登记暗路由与文档空头路由；同时校验 `16000`–`16015` 业务接入面未混入管理面路径。
+   - 提取只读文档门户 `axum::Router` 路由与 `portal-openapi.json` 双向比对，确认只暴露只读方法（`GET` / `HEAD`），同时核验 15 个模拟上游接入面未挂载任何门户路由。
 5. **`scripts/docs-and-plans-guard.py`**：
-   - 校验仓内 Markdown 相对链接 100% 指向真实存在文件；校验 [AGENTS.md](./AGENTS.md)、[IRON_RULES.md](./IRON_RULES.md) 与本文件各自 `< 24,000` 字节；核验 `.gitignore` 屏蔽 `target/`、`node_modules/`、`web/dist/`、`.env*`、`logs/`、`*.pid`、`config/keys/envelope/`、`data/`、`backups/`。
+   - 校验全仓 Markdown 相对链接 100% 指向真实文件；校验 [AGENTS.md](./AGENTS.md)、[IRON_RULES.md](./IRON_RULES.md) 与本文件均 `< 24,000` 字节；核验 `.gitignore` 屏蔽 `target/`、`node_modules/`、`web/dist/`、`.env*`、`logs/`、`*.pid`、`config/keys/envelope/`、`data/`。
 
-### 3. 加固管理面 Web 服务端路由层（物理隔离业务接入面）
-1. **独立监听端口**：管理面（`0.0.0.0:18768`）独立于 `16000`–`16015` 业务接入面运行，挂载 `/health`、`/api/v1/*` 与内嵌 SPA Fallback。
-2. **404 防穿透与缓存头**：
-   - 所有 `/health`、`/api/*`、`/metrics` 未命中路由**严格返回 `404` JSON（`Content-Type: application/json`）**，禁止穿透到 `index.html`。
-   - 缺失的 `/assets/*` 或带扩展名静态路径返回真实 `404`。
-   - `/assets/*` 返回 `Cache-Control: public, max-age=31536000, immutable`；`index.html` 返回 `Cache-Control: no-cache` + 内容哈希 `ETag`（支持 `If-None-Match` → `304`）。
-   - 所有静态响应精确设置 `Content-Type`（`.js`/`.mjs`/`.css` 带 `charset=utf-8`，`.wasm` 为 `application/wasm`，`.svg` 为 `image/svg+xml`）并统一附带 `X-Content-Type-Options: nosniff`；开启预压缩/压缩层且跳过已压缩二进制。
-3. **安全与停机**：复用 `x-loadgen` 的 `admin.passwd` 首登改密（支持 `--no-auth` 联调）与 `origin_and_host_guard`；管理面、全部业务端口及后台 worker 统一接入 `CancellationToken` 实现 `SIGINT`/`SIGTERM` 优雅退出。
+### 3. 构建无状态自包含底座与只读文档门户
+1. **脱离源码自包含启动**：
+   - 支持 `--config`（缺省使用内置默认配置）、`--data-dir` 与 `--portal-listen`。
+   - 内置 100 张确定性基准样本图与公共演示公钥；当 `--data-dir` 下缺少信封测试密钥时在启动阶段自动生成，保证单二进制放入空目录即可直接运行全部 15 个接入面。
+2. **模拟上游接口文档与同源契约导出**：
+   - 整理中立、清晰的 [docs/API.md](./docs/API.md)、[docs/SPEC.md](./docs/SPEC.md) 与 `docs/ENVELOPE.md`。
+   - 只读门户端口挂载 `/health`、`/api/v1/status`、`/api/v1/fronts`、`/api/v1/contracts/*`（同源输出 `.proto`、`.fds`、`WSDL`、`GraphQL SDL`、`openapi.json`）、`/api/v1/logs/recent`（已脱敏的内存环形缓冲）以及内嵌 SPA 静态资源。
+3. **路由防穿透、缓存头与优雅停机**：
+   - `/health` 与 `/api/*` 未命中请求返回 `404` JSON，缺失 `/assets/*` 返回 `404`，前端路由返回 `index.html`（`no-cache` + `ETag`），指纹资源返回 `immutable` + `nosniff`。
+   - 门户、15 个模拟接入面与 `JobStore` 统一通过 `CancellationToken` 响应 `SIGINT`/`SIGTERM` 优雅退出。
 
-### 4. 落地 G3 单二进制空目录黑盒终验 `scripts/gate/all.sh` 与 CI
-1. **`scripts/gate/all.sh`** 串联全链路并在末尾输出 `ALL GATES PASS`（单步输出 `GATE stepNN PASS`）：
-   - **G1**：`shellcheck`（`git ls-files '*.sh'`）、`actionlint`（读取 [.github/actionlint.yaml](./.github/actionlint.yaml)）、[release-test.sh](./.github/scripts/release-test.sh)，以及上述 5 个 Python 守卫脚本。
-   - **G2**（严格先 Web 后 Rust）：`(cd x-upt-bin/x-upt/web && pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build)` → `python3 scripts/embed-guard.py` → `cargo fmt --all -- --check` → `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings` → `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked` → `cargo test --workspace --locked` → `cargo test --workspace --doc --all-features --locked`。
-   - **G3（脱离源码黑盒交付）**：`cargo build --release --locked` → 仅拷贝编译产物到 `TMP_RUN_DIR="$(mktemp -d)"`（使用独立 `--data-dir`，不拷贝 `web/` 或 `web/dist/`）→ 启动服务（管理面 `18768` + 业务面 `16000`–`16015`）并断言：
-     - 管理面 `/health` 返回 `200` JSON；`/` 与 `/app/deep-route-check` 返回 `200` `text/html`（`no-cache` + 含 `/assets/`）；
-     - 提取首页 `/assets/*.js` 与 `*.css` 验证 `200`、MIME、`immutable`、`nosniff` 及 SHA-256 与构建期 `web/dist` 一致；
-     - `/api/v1/__nonexistent_probe__` 返回 JSON `404`，`/assets/__nonexistent__.js` 返回 `404`；
-     - 运行模拟上游基线回归（`test/acceptance.py`、`test/envelope_acceptance.py`）及 gRPC `.fds`（单文件与多文件 `import` 打包）导出和 RPC 冒烟；
-     - Playwright 直连单二进制管理面（`18768`）跑通 `e2e/smoke.spec.ts`（`console.error` 与 `pageerror` 为 `0`，含模拟规则与 gRPC 文件生成闭环）；
-     - 发送 `SIGTERM`，进程在 `<= 10s` 内以退出码 `0` 退出。
-2. **更新 [.github/workflows/ci.yml](./.github/workflows/ci.yml) 与 [Dockerfile](./Dockerfile)**：
-   - CI 增设 `frontend` job（`pnpm` 构建 `web/dist` 并上传 artifact 供 `rust` job 真实嵌入）及 Python G1 守卫步骤；
-   - `Dockerfile` 增设 `node` 前端构建阶段（参照 `x-loadgen/Dockerfile`）并与 `deploy/` 自包含 Compose 工程保持路径对齐。
+### 4. 串联 `scripts/gate/all.sh` 与 CI / 容器交付
+1. **`scripts/gate/all.sh`** 按顺序串联全套门禁并在末尾打印 `ALL GATES PASS`：
+   - **G1**：`shellcheck`、`actionlint`、[release-test.sh](./.github/scripts/release-test.sh) 及 5 个 Python 静态守卫脚本。
+   - **G2**：`web/` 前端 `pnpm` 安装、lint、typecheck、单测、生产打包 → `embed-guard.py` → Rust 全工作区 `fmt --check`、`clippy -D warnings`、`cargo doc -D warnings`、单元与文档测试。
+   - **G3**：`cargo build --release --locked` → 拷贝单二进制至 `TMP_RUN_DIR="$(mktemp -d)"` 空目录并指定独立 `--data-dir` 拉起 → 运行 [test/acceptance.py](./test/acceptance.py) 与 [test/envelope_acceptance.py](./test/envelope_acceptance.py) → 校验门户 `/health`、`/api/v1/status`、5 类同源契约下载、静态资源缓存头、API/静态 `404` 防穿透 → 运行 Playwright `web/e2e/smoke.spec.ts` → 验证 `SIGTERM` 10 秒内 `0` 状态码退出。
+2. **对齐 CI 与容器编排**：
+   - [ci.yml](./.github/workflows/ci.yml) 按 `scripts` → `frontend`（上传 `web-dist` 产物）→ `rust`（下载 `web-dist` 后执行全套 Rust 验证）组织流水线；
+   - [Dockerfile](./Dockerfile) 采用 `node` 前端构建 + `debian:trixie` Rust 编译 + `debian:trixie-slim` 非 root 运行三阶段结构，与 `deploy/compose.yml` 环境变量保持一致。
 
-### 5. 存量违例清零与签收
-- 按第 1 步收紧 Lints 后，逐项清理存量代码中的业务 `.unwrap()`/`.expect()`、`println!`/`eprintln!`（切至 `tracing`）、`std::process::exit`（切至 `ExitCode`）、`as` 强转（切至 `TryFrom`/`From`）、超长/高复杂度函数及缺失的 Rustdoc 注释。
-- 由独立 `Verifier` 上下文运行 `bash scripts/gate/all.sh` 与 `git status`，确认输出 `ALL GATES PASS` 后方可宣告完成。
+### 5. 存量违例清理与独立签收
+- 收紧 Lints 后逐项消除存量 `.unwrap()` / `.expect()`、`println!` / `eprintln!`、`std::process::exit`、`as` 强转与超长函数，补齐全部 `pub` API Rustdoc。
+- 由独立验证上下文执行 `bash scripts/gate/all.sh` 并核对 `git status` 干净无残留，确认末行输出 `ALL GATES PASS` 后完成签收。

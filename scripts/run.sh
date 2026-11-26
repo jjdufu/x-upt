@@ -8,17 +8,19 @@ else
     PROJECT_ROOT="$SCRIPT_DIR"
 fi
 
-PID_FILE="${PROJECT_ROOT}/upupt.pid"
-CONSOLE_LOG="${PROJECT_ROOT}/logs/upupt.console.log"
+PID_FILE="${PROJECT_ROOT}/x-upt.pid"
+DATA_DIR="${X_UPT_DATA_DIR:-${PROJECT_ROOT}/data}"
+CONSOLE_LOG="${DATA_DIR}/logs/x-upt.console.log"
+ADMIN_LISTEN="${X_UPT_ADMIN_LISTEN:-0.0.0.0:18768}"
 
 usage() {
     echo "Usage: $0 [start|status|stop|restart]"
     echo ""
     echo "Commands:"
-    echo "  start    Start the service (default)"
+    echo "  start    Start x-upt (default)"
     echo "  status   Check service status"
-    echo "  stop     Stop the service"
-    echo "  restart  Restart the service"
+    echo "  stop     Stop x-upt"
+    echo "  restart  Restart x-upt"
 }
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -50,7 +52,7 @@ proc_state() {
     printf '%s' "${rest:0:1}"
 }
 
-is_upupt() {
+is_x_upt() {
     local pid="$1"
     if ! kill -0 "$pid" 2>/dev/null; then
         return 1
@@ -58,7 +60,7 @@ is_upupt() {
     if [[ -r "/proc/${pid}/comm" ]]; then
         local comm
         comm="$(tr -d '\0' < "/proc/${pid}/comm" 2>/dev/null || true)"
-        if [[ "$comm" != "upupt" ]]; then
+        if [[ "$comm" != "x-upt" ]]; then
             return 1
         fi
     fi
@@ -73,7 +75,7 @@ is_upupt() {
 running_pid() {
     local pid
     pid="$(read_pid || true)"
-    if [[ -n "${pid}" ]] && is_upupt "$pid"; then
+    if [[ -n "${pid}" ]] && is_x_upt "$pid"; then
         printf '%s' "$pid"
         return 0
     fi
@@ -82,7 +84,7 @@ running_pid() {
 
 resolve_binary() {
     local candidate
-    for candidate in "${PROJECT_ROOT}/upupt" "${PROJECT_ROOT}/target/release/upupt"; do
+    for candidate in "${PROJECT_ROOT}/x-upt" "${PROJECT_ROOT}/target/release/x-upt" "${PROJECT_ROOT}/target/debug/x-upt"; do
         if [[ -x "$candidate" ]]; then
             printf '%s' "$candidate"
             return 0
@@ -91,48 +93,30 @@ resolve_binary() {
     return 1
 }
 
-binary_config() {
-    local bin_dir
-    bin_dir="$(cd "$(dirname "$1")" && pwd)"
-    printf '%s' "${bin_dir}/config/app.toml"
-}
-
-require_start_files() {
-    local binary config
-    binary="$(resolve_binary || true)"
-    if [[ -z "$binary" ]]; then
-        echo "Error: Binary not found. Place 'upupt' in ${PROJECT_ROOT}/ or run 'cargo build --release' first."
-        exit 1
-    fi
-    config="$(binary_config "$binary")"
-    if [[ ! -f "$config" ]]; then
-        echo "Error: ${config} not found."
-        echo "Config is read next to the binary. Put app.toml there, or place the binary at ${PROJECT_ROOT}/upupt beside config/."
-        exit 1
-    fi
-}
-
 start_service() {
-    local binary pid i
+    local binary pid
     if pid="$(running_pid)"; then
-        echo "UPUPT is already running (PID ${pid})."
+        echo "x-upt is already running (PID ${pid})."
         exit 0
     fi
     rm -f "$PID_FILE"
-    require_start_files
-    binary="$(resolve_binary)"
+    binary="$(resolve_binary || true)"
+    if [[ -z "$binary" ]]; then
+        echo "Error: Binary not found. Build 'x-upt' first."
+        exit 1
+    fi
 
-    echo "==> Starting UPUPT..."
-    mkdir -p "${PROJECT_ROOT}/logs"
+    echo "==> Starting x-upt..."
+    mkdir -p "${DATA_DIR}/logs"
     cd "$PROJECT_ROOT"
-    nohup "$binary" >> "$CONSOLE_LOG" 2>&1 &
+    nohup "$binary" serve --admin-listen "$ADMIN_LISTEN" --data-dir "$DATA_DIR" >> "$CONSOLE_LOG" 2>&1 &
     echo $! > "$PID_FILE"
 
     pid="$(cat "$PID_FILE")"
-    for i in 1 2 3; do
+    for _ in 1 2 3; do
         sleep 1
-        if ! is_upupt "$pid"; then
-            echo "    Failed to start. Check ${CONSOLE_LOG} and the log file in config/app.toml ([log] section)."
+        if ! is_x_upt "$pid"; then
+            echo "    Failed to start. Check ${CONSOLE_LOG}."
             rm -f "$PID_FILE"
             exit 1
         fi
@@ -140,8 +124,9 @@ start_service() {
 
     echo "    PID: ${pid}"
     echo "    Binary: ${binary}"
+    echo "    Admin: ${ADMIN_LISTEN}"
+    echo "    Data: ${DATA_DIR}"
     echo "    Console: ${CONSOLE_LOG}"
-    echo "    Log: configured in the binary's config/app.toml ([log] section)"
 }
 
 wait_gone() {
@@ -163,7 +148,7 @@ wait_gone() {
 stop_service() {
     local pid
     if pid="$(running_pid)"; then
-        echo "==> Stopping UPUPT (PID ${pid})..."
+        echo "==> Stopping x-upt (PID ${pid})..."
         kill -TERM "$pid" 2>/dev/null || true
         if ! wait_gone "$pid" 12; then
             echo "    Still running after 12s, sending SIGKILL..."
@@ -179,23 +164,23 @@ stop_service() {
     fi
 
     if [[ -f "$PID_FILE" ]]; then
-        echo "UPUPT is not running (stale PID file)."
+        echo "x-upt is not running (stale PID file)."
         rm -f "$PID_FILE"
     else
-        echo "UPUPT is not running."
+        echo "x-upt is not running."
     fi
 }
 
 status_service() {
     local pid
     if pid="$(running_pid)"; then
-        echo "UPUPT is running. PID: ${pid}"
+        echo "x-upt is running. PID: ${pid}"
         exit 0
     fi
     if [[ -f "$PID_FILE" ]]; then
-        echo "UPUPT is not running (stale PID file)."
+        echo "x-upt is not running (stale PID file)."
     else
-        echo "UPUPT is not running."
+        echo "x-upt is not running."
     fi
     exit 1
 }

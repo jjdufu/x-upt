@@ -3,17 +3,6 @@
 #
 #   release.sh plan                 计算是否发版与版本号，写发版说明到 $NOTES_FILE
 #   release.sh apply <X.Y.Z>        改写全部版本文件，并把 $NOTES_FILE 置顶写入 CHANGELOG.md
-#
-# 规则（与 x-loadgen 一致：bump-minor-pre-major、bump-patch-for-minor-pre-major）：
-#   - 仓库还没有任何 vX.Y.Z tag：直接以 Cargo.toml [package] 的当前版本做首次发版；
-#   - 之后只看上一个 tag 以来的提交（chore(release) 提交不计）：
-#       破坏性变更（type!: 或正文 BREAKING CHANGE:）  1.x 起升 major，0.x 升 minor
-#       feat                                          1.x 起升 minor，0.x 升 patch
-#       fix / perf / revert                           升 patch
-#     其余类型（docs、chore、ci、refactor、test、style、build 等）不触发发版。
-#
-# plan 的结果以 key=value 写到 $GITHUB_OUTPUT（未设置时打印到标准输出）：
-#   release=true|false  version=X.Y.Z  previous=<上一个 tag 或空>  bump=initial|major|minor|patch|none
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
@@ -37,7 +26,7 @@ emit() {
 
 package_version() {
     awk '
-        /^\[package\]/ { in_pkg = 1; next }
+        /^\[(workspace\.)?package\]/ { in_pkg = 1; next }
         /^\[/ { in_pkg = 0 }
         in_pkg && /^version = "/ { gsub(/^version = "|".*$/, ""); print; exit }
     ' "${ROOT}/Cargo.toml"
@@ -56,7 +45,6 @@ commit_link() {
     fi
 }
 
-# 按提交逐条分类，结果写入全局数组与 LEVEL：0 不发版，1 fix/perf/revert，2 feat，3 破坏性变更。
 classify() {
     local range="$1" rec sha subject body type scope bang desc item
     BREAKING=() FEATS=() FIXES=() PERFS=() REVERTS=()
@@ -129,7 +117,7 @@ cmd_plan() {
     previous="$(latest_tag)"
     if [ -z "$previous" ]; then
         version="$(package_version)"
-        [[ "$version" =~ $SEMVER_RE ]] || die "Cargo.toml 的 package 版本不是 X.Y.Z：'${version}'"
+        [[ "$version" =~ $SEMVER_RE ]] || die "Cargo.toml 的版本不是 X.Y.Z：'${version}'"
         if git -C "$ROOT" rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
             die "tag v${version} 已存在但不是 HEAD 的祖先，拒绝发版"
         fi
@@ -173,10 +161,12 @@ cmd_apply() {
     [[ "$version" =~ $SEMVER_RE ]] || die "apply 需要 X.Y.Z 版本号，得到 '${version}'"
     [ -s "$NOTES_FILE" ] || die "发版说明不存在：${NOTES_FILE}（先执行 plan）"
 
-    replace_in Cargo.toml "/^\[package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"${version}\"/"
+    replace_in Cargo.toml "/^\[(workspace\.)?package\]/,/^\[/ s/^version = \"[^\"]*\"/version = \"${version}\"/"
+    replace_in Cargo.toml "/^\[workspace\.dependencies\]/,/^\[/ s/(x-upt(-[a-z]+)? = \{[^}]*version = \")[^\"]*(\")/\1${version}\3/"
+
     tmp="$(mktemp)"
     awk -v v="$version" '
-        /^name = "upupt"$/ { hit = 1; print; next }
+        /^name = "x-upt(-[a-z]+)?"$/ { hit = 1; print; next }
         hit && /^version = "/ { print "version = \"" v "\""; hit = 0; next }
         { print }
     ' "${ROOT}/Cargo.lock" >"$tmp"
@@ -184,8 +174,12 @@ cmd_apply() {
     rm -f "$tmp"
 
     [ "$(package_version)" = "$version" ] || die "Cargo.toml 版本改写失败"
-    [ "$(grep -A1 -E '^name = "upupt"$' "${ROOT}/Cargo.lock" | grep -c "^version = \"${version}\"")" -eq 1 ] \
+    [ "$(grep -A1 -E '^name = "x-upt"$' "${ROOT}/Cargo.lock" | grep -c "^version = \"${version}\"")" -eq 1 ] \
         || die "Cargo.lock 版本改写失败"
+
+    if [ -f "${ROOT}/web/package.json" ]; then
+        sed -E -i "0,/\"version\": \"[^\"]*\"/s//\"version\": \"${version}\"/" "${ROOT}/web/package.json"
+    fi
 
     tmp="$(mktemp)"
     {

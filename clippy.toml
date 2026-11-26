@@ -1,3 +1,8 @@
-# hyper::Response / tonic::Status are protocol error types; shrinking them is not possible.
-large-error-threshold = 256
-too-many-arguments-threshold = 16
+too-many-lines-threshold = 100
+cognitive-complexity-threshold = 25
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+max-fn-params-bools = 3
+max-struct-bools = 3
+enum-variant-size-threshold = 200
+large-error-threshold = 200

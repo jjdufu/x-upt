@@ -1,0 +1,281 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "x-upt Control Plane API",
+    "version": "0.1.0",
+    "description": "Management, asset import, precondition-guarded interface switches, and same-source contract APIs for x-upt."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Service readiness",
+        "responses": { "200": { "description": "Healthy" } }
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "operationId": "getAuthSession",
+        "summary": "Current management session state",
+        "responses": { "200": { "description": "Session state" } }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "loginAdmin",
+        "summary": "Authenticate management token",
+        "responses": {
+          "200": { "description": "Authenticated" },
+          "401": { "description": "Invalid token" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logoutAdmin",
+        "summary": "Clear management session cookie",
+        "responses": { "200": { "description": "Logged out" } }
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "operationId": "getSystemStatus",
+        "summary": "Full status of fronts, business methods, asset counts, and preconditions",
+        "responses": { "200": { "description": "System status" } }
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "summary": "Read global simulation settings",
+        "responses": { "200": { "description": "Global settings" } }
+      },
+      "put": {
+        "operationId": "updateSettings",
+        "summary": "Update global simulation settings",
+        "responses": { "200": { "description": "Updated settings" } }
+      }
+    },
+    "/api/v1/methods/{method}/enable": {
+      "post": {
+        "operationId": "enableMethod",
+        "summary": "Enable a business method when preconditions are met",
+        "parameters": [{ "name": "method", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Enabled" },
+          "409": { "description": "Precondition not met" }
+        }
+      }
+    },
+    "/api/v1/methods/{method}/disable": {
+      "post": {
+        "operationId": "disableMethod",
+        "summary": "Disable a business method",
+        "parameters": [{ "name": "method", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Disabled" },
+          "409": { "description": "Active front depends on method" }
+        }
+      }
+    },
+    "/api/v1/fronts": {
+      "get": {
+        "operationId": "listFronts",
+        "summary": "List all 15 upstream fronts and readiness",
+        "responses": { "200": { "description": "Front list" } }
+      }
+    },
+    "/api/v1/fronts/{front}": {
+      "put": {
+        "operationId": "updateFront",
+        "summary": "Update listener, TLS, auth, or worker parameters of a front",
+        "parameters": [{ "name": "front", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Updated" },
+          "409": { "description": "Conflict or invalid active configuration" }
+        }
+      }
+    },
+    "/api/v1/fronts/{front}/enable": {
+      "post": {
+        "operationId": "enableFront",
+        "summary": "Bind listener and start an upstream front when preconditions are met",
+        "parameters": [{ "name": "front", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Bound and started" },
+          "409": { "description": "Precondition not met or port conflict" }
+        }
+      }
+    },
+    "/api/v1/fronts/{front}/disable": {
+      "post": {
+        "operationId": "disableFront",
+        "summary": "Stop an upstream front and release its port",
+        "parameters": [{ "name": "front", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Stopped" } }
+      }
+    },
+    "/api/v1/images": {
+      "get": {
+        "operationId": "listImages",
+        "summary": "List imported benchmark images",
+        "responses": { "200": { "description": "Image list" } }
+      },
+      "post": {
+        "operationId": "importImages",
+        "summary": "Import one or more benchmark images via multipart or JSON",
+        "responses": { "200": { "description": "Imported images" } }
+      }
+    },
+    "/api/v1/images/{id}/raw": {
+      "get": {
+        "operationId": "getImageRaw",
+        "summary": "Fetch raw imported image bytes",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Raw image" } }
+      }
+    },
+    "/api/v1/images/{id}": {
+      "delete": {
+        "operationId": "deleteImage",
+        "summary": "Delete an imported image if not locked by active interfaces",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "409": { "description": "Required by active image interface" }
+        }
+      }
+    },
+    "/api/v1/posts": {
+      "get": {
+        "operationId": "listPosts",
+        "summary": "Query imported posts",
+        "responses": { "200": { "description": "Posts page" } }
+      },
+      "post": {
+        "operationId": "createPost",
+        "summary": "Create or upsert a post record",
+        "responses": { "200": { "description": "Saved post" } }
+      }
+    },
+    "/api/v1/posts/import": {
+      "post": {
+        "operationId": "importPosts",
+        "summary": "Batch import posts JSON array",
+        "responses": { "200": { "description": "Import count" } }
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "put": {
+        "operationId": "updatePost",
+        "summary": "Update a post record",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Updated post" } }
+      },
+      "delete": {
+        "operationId": "deletePost",
+        "summary": "Delete a post record if not the last post of an active interface",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "409": { "description": "Required by active posts interface" }
+        }
+      }
+    },
+    "/api/v1/apps": {
+      "get": {
+        "operationId": "listApps",
+        "summary": "List caller application credentials (redacted secrets)",
+        "responses": { "200": { "description": "App list" } }
+      },
+      "post": {
+        "operationId": "createApp",
+        "summary": "Create caller application credential",
+        "responses": { "200": { "description": "Created app" } }
+      }
+    },
+    "/api/v1/apps/{client_id}": {
+      "put": {
+        "operationId": "updateApp",
+        "summary": "Update caller application credential",
+        "parameters": [{ "name": "client_id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Updated app" } }
+      },
+      "delete": {
+        "operationId": "deleteApp",
+        "summary": "Delete caller application credential",
+        "parameters": [{ "name": "client_id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "409": { "description": "Required by active core front" }
+        }
+      }
+    },
+    "/api/v1/envelopes/secrets": {
+      "get": {
+        "operationId": "listEnvelopeSecrets",
+        "summary": "List envelope key and credential metadata (redacted)",
+        "responses": { "200": { "description": "Secret metadata list" } }
+      },
+      "post": {
+        "operationId": "upsertEnvelopeSecret",
+        "summary": "Upload or generate an envelope cryptographic key or secret",
+        "responses": { "200": { "description": "Saved secret metadata" } }
+      }
+    },
+    "/api/v1/envelopes/secrets/{name}": {
+      "delete": {
+        "operationId": "deleteEnvelopeSecret",
+        "summary": "Delete an envelope key or secret if unused by active fronts",
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "409": { "description": "Referenced by active envelope front" }
+        }
+      }
+    },
+    "/api/v1/envelopes/{front}/profiles": {
+      "get": {
+        "operationId": "getEnvelopeProfiles",
+        "summary": "Get envelope profiles for a front",
+        "parameters": [{ "name": "front", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Profile list" } }
+      },
+      "put": {
+        "operationId": "replaceEnvelopeProfiles",
+        "summary": "Replace envelope profiles for a front",
+        "parameters": [{ "name": "front", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Saved profile list" } }
+      }
+    },
+    "/api/v1/docs/fronts": {
+      "get": {
+        "operationId": "getFrontDocs",
+        "summary": "Structured upstream API documentation with live port examples",
+        "responses": { "200": { "description": "Upstream API docs" } }
+      }
+    },
+    "/api/v1/contracts/{name}": {
+      "get": {
+        "operationId": "downloadContract",
+        "summary": "Preview or download same-source protocol contract",
+        "parameters": [{ "name": "name", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Contract payload" } }
+      }
+    },
+    "/api/v1/logs/recent": {
+      "get": {
+        "operationId": "getRecentLogs",
+        "summary": "Query redacted recent access log entries",
+        "responses": { "200": { "description": "Recent log entries" } }
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "operationId": "listJobs",
+        "summary": "List async job queue entries",
+        "responses": { "200": { "description": "Job list" } }
+      }
+    }
+  }
+}

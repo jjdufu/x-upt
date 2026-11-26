@@ -1,25 +1,37 @@
-[package]
-name = "upupt"
+[workspace]
+members = [
+    "crates/x-upt-core",
+    "crates/x-upt-crypto",
+    "crates/x-upt-store",
+    "crates/x-upt-fronts",
+    "crates/x-upt",
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.100"
+license = "MIT"
 
-[dependencies]
-axum = { version = "0.8", features = ["ws", "multipart"] }
-tokio = { version = "1", features = ["full"] }
+[workspace.dependencies]
+x-upt-core = { version = "0.1.0", path = "crates/x-upt-core" }
+x-upt-crypto = { version = "0.1.0", path = "crates/x-upt-crypto" }
+x-upt-store = { version = "0.1.0", path = "crates/x-upt-store" }
+x-upt-fronts = { version = "0.1.0", path = "crates/x-upt-fronts" }
+
+axum = { version = "0.8", default-features = false, features = ["form", "http1", "http2", "json", "matched-path", "multipart", "original-uri", "query", "tokio", "ws"] }
+tokio = { version = "1", default-features = false, features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
-toml = "1.2"
 base64 = "0.23"
 rand = "0.10"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"] }
-hyper = { version = "1", features = ["http1", "http2", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "server-auto", "server-graceful", "service"] }
 tower = { version = "0.5", features = ["util"] }
-http-body-util = "0.1"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 rustls-pemfile = "2"
@@ -31,14 +43,9 @@ jsonwebtoken = { version = "12.0.0", default-features = false, features = ["rust
 subtle = "2"
 url = "2"
 async-graphql = { version = "=7.0.16", features = ["dynamic-schema"] }
-async-graphql-axum = "=7.0.16"
-async-graphql-derive = "=7.0.16"
-async-graphql-parser = "=7.0.16"
-async-graphql-value = "=7.0.16"
 tonic = { version = "0.13", features = ["transport"] }
 prost = "0.13"
 quick-xml = "0.37"
-futures-util = "0.3"
 bytes = "1"
 http = "1"
 aes = "0.9"
@@ -47,18 +54,49 @@ des = "0.9"
 cipher = "0.5"
 libsm = "0.6"
 rsa = { version = "0.10", default-features = false, features = ["std", "encoding", "getrandom", "hazmat", "pkcs1v15"] }
-
-[build-dependencies]
-tonic-build = "0.13"
-prost = "0.13"
-prost-types = "0.13"
+rusqlite = { version = "0.32", default-features = false, features = ["bundled"] }
+rust-embed = "8.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "env-filter", "std", "ansi"] }
 protoc-bin-vendored = "3"
 
-[lints.rust]
-unsafe_code = "warn"
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+trivial_casts = "deny"
+trivial_numeric_casts = "deny"
 
-[lints.clippy]
-all = { level = "warn", priority = -1 }
+[workspace.lints.rustdoc]
+all = { level = "deny", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+allow_attributes = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+get_unwrap = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+indexing_slicing = "deny"
+as_conversions = "deny"
+as_underscore = "deny"
+lossy_float_literal = "deny"
+let_underscore_must_use = "deny"
+unused_result_ok = "deny"
+mem_forget = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+exit = "deny"
+rc_buffer = "deny"
+rc_mutex = "deny"
+infinite_loop = "deny"
+significant_drop_in_scrutinee = "deny"
+non_send_fields_in_send_ty = "deny"
 
 [profile.release]
 opt-level = 3

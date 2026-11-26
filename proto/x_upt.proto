@@ -1,0 +1,62 @@
+syntax = "proto3";
+package x_upt.v1;
+
+service XUpt {
+  rpc SearchPosts (SearchPostsRequest) returns (SearchPostsResponse);
+  rpc RenderPhoto (RenderPhotoRequest) returns (RenderPhotoResponse);
+  rpc CompareImage (CompareImageRequest) returns (CompareImageResponse);
+}
+
+message SearchPostsRequest {
+  string keyword = 1;
+  uint64 user_id = 2;
+  uint32 page = 3;
+  uint32 page_size = 4;
+  string sort = 5;
+}
+
+message Post {
+  uint64 user_id = 1;
+  uint64 id = 2;
+  string title = 3;
+  string body = 4;
+}
+
+message SearchPostsResponse {
+  repeated Post items = 1;
+  uint32 total = 2;
+  uint32 page = 3;
+  uint32 page_size = 4;
+}
+
+message RenderPhotoRequest {
+  string scene = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  string format = 4;
+}
+
+message RenderPhotoResponse {
+  string scene = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  string format = 4;
+  string filename = 5;
+  string mime = 6;
+  uint64 size = 7;
+  bytes image_bytes = 8;
+  string image_base64 = 9;
+}
+
+message CompareImageRequest {
+  string filename = 1;
+  string image = 2;
+  uint32 threshold = 3;
+}
+
+message CompareImageResponse {
+  bool matched = 1;
+  string filename = 2;
+  uint32 distance = 3;
+  uint32 threshold = 4;
+}

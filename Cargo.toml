@@ -9,16 +9,16 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.100"
 license = "MIT"
 
 [workspace.dependencies]
-x-upt-core = { version = "0.1.0", path = "crates/x-upt-core" }
-x-upt-crypto = { version = "0.1.0", path = "crates/x-upt-crypto" }
-x-upt-store = { version = "0.1.0", path = "crates/x-upt-store" }
-x-upt-fronts = { version = "0.1.0", path = "crates/x-upt-fronts" }
+x-upt-core = { version = "0.1.1", path = "crates/x-upt-core" }
+x-upt-crypto = { version = "0.1.1", path = "crates/x-upt-crypto" }
+x-upt-store = { version = "0.1.1", path = "crates/x-upt-store" }
+x-upt-fronts = { version = "0.1.1", path = "crates/x-upt-fronts" }
 
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "http2", "json", "matched-path", "multipart", "original-uri", "query", "tokio", "ws"] }
 tokio = { version = "1", default-features = false, features = ["fs", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }

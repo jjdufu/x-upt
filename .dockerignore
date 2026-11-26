@@ -1,0 +1,14 @@
+.git
+.github
+*.md
+.cargo
+target
+**/.cargo
+**/target
+logs
+upupt
+upupt.pid
+config/keys/envelope
+.idea
+.vscode
+.DS_Store

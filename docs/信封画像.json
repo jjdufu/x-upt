@@ -1,0 +1,562 @@
+{
+  "schema_version": 1,
+  "source": "config/app.toml",
+  "docs": [
+    "docs/信封画像一览.md",
+    "docs/信封改造手册.md"
+  ],
+  "key_dir": "config/keys/envelope/",
+  "faces": [
+    {
+      "face": "envelope_token_plain",
+      "port": 3010,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "issue",
+          "kind": "issue",
+          "methods": [
+            "POST"
+          ],
+          "path": "/issue",
+          "body_kind": "form",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": false,
+          "encrypted": false,
+          "sign_alg": null,
+          "crypt_alg": null,
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": {
+            "username": "config/keys/envelope/issue_username",
+            "password": "config/keys/envelope/issue_password"
+          },
+          "secrets_map": {
+            "username": "config/keys/envelope/issue_username",
+            "password": "config/keys/envelope/issue_password"
+          },
+          "token_prefix": null,
+          "token_response_field": "access_token",
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "username",
+              "slot": "form",
+              "role": "auth"
+            },
+            {
+              "name": "password",
+              "slot": "form",
+              "role": "auth"
+            }
+          ]
+        },
+        {
+          "name": "call",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/call",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": true,
+          "encrypted": false,
+          "sign_alg": null,
+          "crypt_alg": null,
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": "Bearer ",
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "authorization",
+              "slot": "header",
+              "role": "token"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "face": "envelope_token_crypt",
+      "port": 3011,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "issue",
+          "kind": "issue",
+          "methods": [
+            "POST"
+          ],
+          "path": "/issue",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": false,
+          "encrypted": false,
+          "sign_alg": null,
+          "crypt_alg": null,
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": {
+            "id": "config/keys/envelope/issue_id",
+            "secret": "config/keys/envelope/issue_secret"
+          },
+          "secrets_map": {
+            "id": "config/keys/envelope/issue_id",
+            "secret": "config/keys/envelope/issue_secret"
+          },
+          "token_prefix": null,
+          "token_response_field": "access_token",
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "id",
+              "slot": "json",
+              "role": "auth"
+            },
+            {
+              "name": "secret",
+              "slot": "json",
+              "role": "auth"
+            }
+          ]
+        },
+        {
+          "name": "call",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/call",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": false,
+          "encrypted": true,
+          "sign_alg": null,
+          "crypt_alg": "sm4_ecb_pkcs7",
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": "fields",
+          "cipher_fields": [
+            "data"
+          ],
+          "crypt_encoding": "base64",
+          "iv_from": null,
+          "key": "config/keys/envelope/sm4.key",
+          "sign_key": null,
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": "Bearer ",
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "authorization",
+              "slot": "header",
+              "role": "token"
+            },
+            {
+              "name": "data",
+              "slot": "json",
+              "role": "cipher"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "face": "envelope_sign_plain",
+      "port": 3012,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "call",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/call",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": true,
+          "encrypted": false,
+          "sign_alg": "md5",
+          "crypt_alg": null,
+          "order": null,
+          "canon": "sorted_kv",
+          "canon_fields": null,
+          "canon_skip": [
+            "sign"
+          ],
+          "canon_sep": "&",
+          "canon_suffix_key": true,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": "config/keys/envelope/md5.key",
+          "sign_key": null,
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "sign",
+              "slot": "json",
+              "role": "sign"
+            }
+          ]
+        },
+        {
+          "name": "sm3",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/sm3",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": false,
+          "encrypted": false,
+          "sign_alg": "sm3",
+          "crypt_alg": null,
+          "order": null,
+          "canon": "raw",
+          "canon_fields": [
+            "payload"
+          ],
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "sign",
+              "slot": "json",
+              "role": "sign"
+            },
+            {
+              "name": "payload",
+              "slot": "json",
+              "role": "biz"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "face": "envelope_sign_crypt",
+      "port": 3013,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "aes",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/aes",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "envelope",
+          "biz_rest": null,
+          "encrypted": true,
+          "sign_alg": "hmac_sha256",
+          "crypt_alg": "aes_ecb_pkcs5",
+          "order": "sign_then_encrypt",
+          "canon": "raw",
+          "canon_fields": [
+            "payload"
+          ],
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": "fields",
+          "cipher_fields": [
+            "payload"
+          ],
+          "crypt_encoding": "base64",
+          "iv_from": null,
+          "key": "config/keys/envelope/aes.key",
+          "sign_key": "config/keys/envelope/hmac.key",
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "sign",
+              "slot": "json",
+              "role": "sign"
+            },
+            {
+              "name": "payload",
+              "slot": "json",
+              "role": "cipher"
+            }
+          ]
+        },
+        {
+          "name": "sm4",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/sm4",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": null,
+          "encrypted": true,
+          "sign_alg": "hmac_sm3",
+          "crypt_alg": "sm4_cbc_pkcs7",
+          "order": "encrypt_then_sign",
+          "canon": "raw",
+          "canon_fields": [
+            "payload"
+          ],
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": "fields",
+          "cipher_fields": [
+            "payload"
+          ],
+          "crypt_encoding": "base64",
+          "iv_from": "random_prefix",
+          "key": "config/keys/envelope/sm4.key",
+          "sign_key": "config/keys/envelope/hmac_sm3.key",
+          "secrets": null,
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "sign",
+              "slot": "json",
+              "role": "sign"
+            },
+            {
+              "name": "payload",
+              "slot": "json",
+              "role": "cipher"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "face": "envelope_cred_plain",
+      "port": 3014,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "call",
+          "kind": "call",
+          "methods": [
+            "GET"
+          ],
+          "path": "/call",
+          "body_kind": "empty",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": true,
+          "encrypted": false,
+          "sign_alg": null,
+          "crypt_alg": null,
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": "config/keys/envelope/company_id",
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "company_id",
+              "slot": "query",
+              "role": "auth"
+            }
+          ]
+        },
+        {
+          "name": "header",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/header",
+          "body_kind": "json",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": true,
+          "encrypted": false,
+          "sign_alg": null,
+          "crypt_alg": null,
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": null,
+          "cipher_fields": null,
+          "crypt_encoding": null,
+          "iv_from": null,
+          "key": null,
+          "sign_key": null,
+          "secrets": "config/keys/envelope/appcode",
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": null,
+          "fields": [
+            {
+              "name": "appcode",
+              "slot": "header",
+              "role": "auth"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "face": "envelope_cred_crypt",
+      "port": 3015,
+      "enabled": true,
+      "profiles": [
+        {
+          "name": "call",
+          "kind": "call",
+          "methods": [
+            "POST"
+          ],
+          "path": "/call",
+          "body_kind": "form",
+          "body_encoding": "identity",
+          "fail_in": "http",
+          "biz_rest": false,
+          "encrypted": true,
+          "sign_alg": null,
+          "crypt_alg": "des_cbc_pkcs5",
+          "order": null,
+          "canon": null,
+          "canon_fields": null,
+          "canon_skip": null,
+          "canon_sep": null,
+          "canon_suffix_key": null,
+          "cipher_scope": "fields",
+          "cipher_fields": [
+            "params"
+          ],
+          "crypt_encoding": "base64",
+          "iv_from": "key",
+          "key": "config/keys/envelope/des.key",
+          "sign_key": null,
+          "secrets": "config/keys/envelope/cred_username",
+          "secrets_map": null,
+          "token_prefix": null,
+          "token_response_field": null,
+          "response_crypt_alg": "none",
+          "fields": [
+            {
+              "name": "username",
+              "slot": "form",
+              "role": "auth"
+            },
+            {
+              "name": "params",
+              "slot": "form",
+              "role": "cipher"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "related_gateways": [
+    {
+      "face": "oauth_gateway",
+      "port": 3000,
+      "enabled": true,
+      "auth": [
+        "oauth_cc"
+      ]
+    },
+    {
+      "face": "sign_gateway",
+      "port": 3001,
+      "enabled": true,
+      "auth": []
+    }
+  ],
+  "grpc_note": "port 3005 skipped in mazbri联调 when fronts.grpc.enabled=false"
+}
